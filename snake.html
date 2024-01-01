@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Snake Game</title>
+    <style>
+        /* Styling for game board and elements */
+        #game-board {
+            position: relative;
+            height: 400px;
+            width: 400px;
+            border: 1px solid black;
+        }
+        .dot {
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            background: #000;
+        }
+        .apple {
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            background: #f00;
+        }
+        .obstacle {
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            background: #00f;
+        }
+        #score {
+            position: absolute;
+            top: 420px;
+            left: 0;
+            width: 400px;
+            text-align: center;
+            font-size: 20px;
+        }
+        #buttons {
+            position: absolute;
+            top: 460px;
+            left: 0;
+            width: 400px;
+            text-align: center;
+        }
+        .power-up {
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            background: #0f0;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-board"></div>
+    <div id="score"></div>
+    <div id="buttons">
+        <button onclick="startGame()">Start</button>
+        <button onclick="pauseGame()">Pause</button>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+    <script>
+        // Game variables
+        var dotSize = 20;
+        var gameBoardSize = 400;
+        var direction = 'Right';
+        var snake = [{ top: 0, left: 0 }];
+        var apple = null;
+        var obstacles = [
+            { top: 100, left: 100 },
+            { top: 100, left: 120 },
+            { top: 100, left: 140 }
+        ];
+        var powerUp = null;
+        var score = 0;
+        var speed = 200;
+        var gameInterval = null;
+        var gameBoard = document.getElementById('game-board');
+        var scoreElement = document.getElementById('score');
+        var highScore = localStorage.getItem('highScore') || 0;
+
+        // Update the game board
+        function updateGameBoard() {
+            clearPreviousState();
+            drawSnake();
+            drawApple();
+            drawObstacles();
+            drawPowerUp();
+            checkCollisions();
+        }
+
+        // Clear the previous state of the game board
+        function clearPreviousState() {
+            gameBoard.innerHTML = '';
+        }
+
+        // Draw the snake on the game board
+        function drawSnake() {
+            snake.forEach(function (dot) {
+                var dotElement = createDotElement('dot');
+                dotElement.style.top = `${dot.top}px`;
+                dotElement.style.left = `${dot.left}px`;
+                gameBoard.appendChild(dotElement);
+            });
+        }
+
+        // Create a dot element with the specified class name
+        function createDotElement(className) {
+            var dotElement = document.createElement('div');
+            dotElement.className = className;
+            return dotElement;
+        }
+
+        // Draw the apple on the game board
+        function drawApple() {
+            if (apple == null) {
+                apple = generateRandomPosition();
+            }
+            var appleElement = createDotElement('apple');
+            appleElement.style.top = `${apple.top}px`;
+            appleElement.style.left = `${apple.left}px`;
+            gameBoard.appendChild(appleElement);
+        }
+
+        // Draw the obstacles on the game board
+        function drawObstacles() {
+            obstacles.forEach(function (obstacle) {
+                var obstacleElement = createDotElement('obstacle');
+                obstacleElement.style.top = `${obstacle.top}px`;
+                obstacleElement.style.left = `${obstacle.left}px`;
+                gameBoard.appendChild(obstacleElement);
+            });
+        }
+
+        // Draw the power-up on the game board
+        function drawPowerUp() {
+            if (powerUp == null && Math.random() < 0.05) { // 5% chance to spawn a power-up
+                powerUp = generateRandomPosition();
+            }
+            if (powerUp != null) {
+                var powerUpElement = createDotElement('power-up');
+                powerUpElement.style.top = `${powerUp.top}px`;
+                powerUpElement.style.left = `${powerUp.left}px`;
+                gameBoard.appendChild(powerUpElement);
+            }
+        }
+
+        // Generate a random position on the game board
+        function generateRandomPosition() {
+            return {
+                top: Math.floor(Math.random() * gameBoardSize / dotSize) * dotSize,
+                left: Math.floor(Math.random() * gameBoardSize / dotSize) * dotSize
+            };
+        }
+
+        // Check for collisions
+        function checkCollisions() {
+            checkSelfCollision();
+            checkAppleCollision();
+            checkObstacleCollision();
+            checkPowerUpCollision();
+            checkBorderCollision();
+        }
+
+        // Check for self collision
+        function checkSelfCollision() {
+            var head = snake[0];
+            for (var i = 1; i < snake.length; i++) {
+                if (snake[i].top === head.top && snake[i].left === head.left) {
+                    gameOver();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check for apple collision
+        function checkAppleCollision() {
+            var head = snake[0];
+            if (head.top === apple.top && head.left === apple.left) {
+                apple = null;
+                snake.push({});
+                snake.push({...snake[snake.length - 1]});
+                score++;
+                updateScore();
+                speed *= 0.9;
+                restartInterval();
+            }
+        }
+
+        // Check for obstacle collision
+        function checkObstacleCollision() {
+            var head = snake[0];
+            obstacles.forEach(function (obstacle) {
+                if (head.top === obstacle.top && head.left === obstacle.left) {
+                    gameOver();
+                    return true;
+                }
+            });
+        }
+
+        // Check for power-up collision
+        function checkPowerUpCollision() {
+            var head = snake[0];
+            if (powerUp != null && head.top === powerUp.top && head.left === powerUp.left) {
+                powerUp = null;
+                snake.push({...snake[snake.length - 1]});
+                score += 2; // double score for power-up
+                updateScore();
+                restartInterval();
+            }
+        }
+
+        // Check for border collision
+        function checkBorderCollision() {
+            var head = snake[0];
+            if (head.top < 0 || head.left < 0 || head.top >= gameBoardSize || head.left >= gameBoardSize) {
+                gameOver();
+                return true;
+            }
+        }
+
+        // Update the snake's position
+        function updateSnake() {
+            var head = { ...snake[0]}; // copy head
+            if (direction === 'Left') head.left -= dotSize;
+            if (direction === 'Right') head.left += dotSize;
+            if (direction === 'Up') head.top -= dotSize;
+            if (direction === 'Down') head.top += dotSize;
+
+            // Check if the new head position is valid
+            if (head.top < 0 || head.left < 0 || head.top >= gameBoardSize || head.left >= gameBoardSize) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            // remove tail
+            if (snake.length > 1) {
+                snake.pop();
+            }
+        }
+
+        // Start the game
+        function startGame() {
+            if (gameInterval != null) return; // Check if a game is already in progress
+            restartInterval();
+            document.addEventListener('keydown', handleKeyDown); // Add keydown event listener
+        }
+
+        // Pause the game
+        function pauseGame() {
+            clearInterval(gameInterval);
+            gameInterval = null; // Set gameInterval to null
+            alert("Game paused"); // Provide feedback to the player
+            document.removeEventListener('keydown', handleKeyDown); // Remove keydown event listener
+        }
+
+        // Restart the game
+        function restartGame() {
+            clearInterval(gameInterval);
+            snake = [{ top: 0, left: 0 }];
+            apple = null;
+            powerUp = null; // Reset power-up
+            obstacles = [ // Reset obstacles
+                { top: 100, left: 100 },
+                { top: 100, left: 120 },
+                { top: 100, left: 140 }
+            ];
+            score = 0;
+            direction = 'Right';
+            updateGameBoard();
+            scoreElement.innerText = "Score: " + score + ", High Score: " + highScore;
+            speed = 200; // Reset the speed variable
+            document.addEventListener('keydown', handleKeyDown); // Add keydown event listener
+        }
+
+        // Game over
+        function gameOver() {
+            clearInterval(gameInterval);
+            gameInterval = null; // Set gameInterval to null
+            if (score > highScore) {
+                localStorage.setItem('highScore', score);
+            }
+            alert("Game Over! Your score: " + score + ", High Score: " + highScore);
+            snake = [{ top: 0, left: 0 }];
+            apple = null;
+            score = 0;
+            direction = 'Right';
+            updateGameBoard();
+            scoreElement.innerText = "Score: " + score + ", High Score: " + highScore;
+            speed = 200; // Reset the speed variable
+            document.removeEventListener('keydown', handleKeyDown); // Remove keydown event listener
+        }
+
+        // Restart the game interval
+        function restartInterval() {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(function () {
+                updateSnake();
+                updateGameBoard();
+            }, speed);
+        }
+
+        // Update the score element
+        function updateScore() {
+            scoreElement.innerText = "Score: " + score + ", High Score: " + highScore;
+        }
+
+        // Handle keydown event
+        function handleKeyDown(event) {
+            if (gameInterval == null) return; // Prevent the player from controlling the snake after a game over
+            if (event.key === 'ArrowUp' && direction !== 'Down') {
+                direction = 'Up';
+            } else if (event.key === 'ArrowDown' && direction !== 'Up') {
+                direction = 'Down';
+            } else if (event.key === 'ArrowLeft' && direction !== 'Right') {
+                direction = 'Left';
+            } else if (event.key === 'ArrowRight' && direction !== 'Left') {
+                direction = 'Right';
+            }
+            event.preventDefault(); // Prevent the default action of the arrow keys
+        }
+
+        updateGameBoard();
+    </script>
+</body>
+</html>
