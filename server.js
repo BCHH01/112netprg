@@ -9,11 +9,12 @@ app.get('/', (req, res) => {
 
 app.get('/about', (req, res) => {
     res.json({
-        "team": "Our Team",
+        "team": "Group name",
         "members": [
-            {"id": "0001", "name": "Hello1"},
-            {"id": "0002", "name": "Hello2"},
-            {"id": "0003", "name": "Hello3"},
+            {"id": "410855497", "name": "聶克威"},
+            {"id": "410855257", "name": "陳宏豪"},
+            {"id": "410856073", "name": "陳樂恒"},
+            {"id": "410856024", "name": "龐嘉多"},
         ]
     });
 });
